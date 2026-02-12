@@ -1,0 +1,5 @@
+{
+  "name": "FactShield Core - Project Antigravity",
+  "description": "A secure OSINT-themed platform for publishing fact-checking analyses and evidence files, powered by NorthByte.",
+  "requestFramePermissions": []
+}
