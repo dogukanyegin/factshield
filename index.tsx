@@ -1,155 +1,219 @@
-import React, { useState, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
-import { Shield, Lock, FileText, Trash2, LogOut, ChevronLeft, Paperclip, User as UserIcon } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { createClient } from "@supabase/supabase-js";
+import { Lock, FileText, Trash2, ChevronLeft, Paperclip } from "lucide-react";
 
 // --- SUPABASE AYARLARI ---
-const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co"; 
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMTI3MzcsImV4cCI6MjA4NjY4ODczN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
+// ⚠️ Key'i burada tutacaksan RLS/policy şart.
+const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ"; // buraya senin anon key
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Types
+// --- TİPLER ---
 interface Post {
   id: number;
   title: string;
   author: string;
   content: string;
   date: string;
-  files: string; // Buluttaki dosya ismi
+  files: string[];
 }
 
 interface User {
   username: string;
 }
 
+// DB row tipi (senin tabloya göre)
+type FactShieldRow = {
+  id: number;
+  title: string;
+  author: string | null;
+  content: string | null;
+  date: string | null;
+  files: string | null; // <- text
+};
+
+// files text -> string[]
+function parseFiles(filesText: string | null): string[] {
+  if (!filesText) return [];
+  try {
+    const arr = JSON.parse(filesText);
+    if (Array.isArray(arr)) return arr.map(String);
+  } catch (_) {
+    // ignore
+  }
+  // fallback: "a.pdf,b.txt"
+  return filesText
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// string[] -> text
+function serializeFiles(files: string[]): string {
+  return JSON.stringify(files ?? []);
+}
+
 const App = () => {
-  // State
-  const [view, setView] = useState<'home' | 'login' | 'admin' | 'post'>('home');
+  const [view, setView] = useState<"home" | "login" | "admin" | "post">("home");
   const [activePostId, setActivePostId] = useState<number | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [notifications, setNotifications] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [notifications, setNotifications] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  // --- SUPABASE'DEN VERİ ÇEKME ---
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/posts?select=*&order=id.desc`, {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPosts(data);
-      }
-    } catch (e) { console.error("Database connection error", e); }
+  const activePost = useMemo(() => posts.find((p) => p.id === activePostId) ?? null, [posts, activePostId]);
+
+  const showNotification = (msg: string, type: "success" | "error") => {
+    setNotifications({ msg, type });
+    setTimeout(() => setNotifications(null), 3000);
+  };
+
+  // --- DB'DEN ÇEK (INITIAL_POSTS yok, localStorage yok) ---
+  const loadPosts = async () => {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from('FactShield') // tablo adın EXACT: "FactShield"
+      .select("id,title,author,content,date,files")
+      .order("id", { ascending: false });
+
+    if (error) {
+      showNotification(error.message, "error");
+      setLoading(false);
+      return;
+    }
+
+    const mapped: Post[] = ((data ?? []) as FactShieldRow[]).map((row) => ({
+      id: row.id,
+      title: row.title,
+      author: row.author ?? "NorthByte Analyst",
+      content: row.content ?? "",
+      date: row.date ?? "",
+      files: parseFiles(row.files),
+    }));
+
+    setPosts(mapped);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchPosts();
-    const storedUser = localStorage.getItem('factshield_user');
+    // UI login state sadece front-end (DB güvenliği değildir)
+    const storedUser = localStorage.getItem("factshield_user");
     if (storedUser) setUser(JSON.parse(storedUser));
+
+    loadPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- GİRİŞ MANTIĞI ---
+  // --- LOGIN (UI için) ---
+  // ⚠️ Bu login Supabase Auth değil. Sadece admin paneli göstermek için.
+  // DB insert/delete'ı korumak istiyorsan Supabase Auth kullanmalısın.
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
-    const username = (form.elements.namedItem('username') as HTMLInputElement).value;
-    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+    const username = (form.elements.namedItem("username") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
 
-    if (username === 'admin' && password === 'admin123') {
+    if (username === "admin" && password === "admin123") {
       const newUser = { username };
       setUser(newUser);
-      localStorage.setItem('factshield_user', JSON.stringify(newUser));
-      setView('admin');
-      showNotification('Access Granted', 'success');
+      localStorage.setItem("factshield_user", JSON.stringify(newUser));
+      setView("admin");
+      showNotification("Access Granted", "success");
     } else {
-      showNotification('Access Denied: Invalid Credentials', 'error');
+      showNotification("Access Denied: Invalid Credentials", "error");
     }
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('factshield_user');
-    setView('home');
-    showNotification('Logged Out', 'success');
+    localStorage.removeItem("factshield_user");
+    setView("home");
+    showNotification("Logged Out", "success");
   };
 
-  // --- YENİ POST EKLEME (BULUT DESTEKLİ) ---
+  // --- YENİ RAPOR EKLE (Supabase INSERT) ---
   const handleAddPost = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
-    const fileInput = form.elements.namedItem('files') as HTMLInputElement;
-    const file = fileInput.files?.[0];
-    let fileUrl = "";
 
-    // 50MB Dosya Yükleme İşlemi
-    if (file) {
-      showNotification('Uploading file to cloud...', 'success');
-      const fileName = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
-      try {
-        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/evidence/${fileName}`, {
-          method: 'POST',
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': file.type },
-          body: file
-        });
-        if (!uploadRes.ok) throw new Error("Storage Error");
-        fileUrl = fileName;
-      } catch (err) {
-        showNotification('File Upload Failed!', 'error');
-        return;
-      }
-    }
+    const title = (form.elements.namedItem("title") as HTMLInputElement).value;
+    const author = (form.elements.namedItem("author") as HTMLInputElement).value;
+    const content = (form.elements.namedItem("content") as HTMLTextAreaElement).value;
 
-    const postData = {
-      title: (form.elements.namedItem('title') as HTMLInputElement).value,
-      author: (form.elements.namedItem('author') as HTMLInputElement).value,
-      content: (form.elements.namedItem('content') as HTMLTextAreaElement).value,
-      date: new Date().toISOString().split('T')[0],
-      files: fileUrl
+    const fileInput = form.elements.namedItem("files") as HTMLInputElement;
+    const fileNames = fileInput.files ? Array.from(fileInput.files).map((f) => f.name) : [];
+
+    const payload = {
+      title,
+      author,
+      content,
+      date: new Date().toISOString().slice(0, 10),
+      files: serializeFiles(fileNames), // <- text kolonuna JSON string basıyoruz
     };
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/posts`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(postData)
-    });
+    const { data, error } = await supabase
+      .from("FactShield")
+      .insert(payload)
+      .select("id,title,author,content,date,files")
+      .single();
 
-    if (res.ok) {
-      showNotification('Analysis Published to Network', 'success');
-      form.reset();
-      fetchPosts();
-    } else { showNotification('Database Write Error', 'error'); }
-  };
-
-  const handleDeletePost = async (id: number) => {
-    if (confirm('Confirm Deletion: This action is irreversible.')) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/posts?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (res.ok) {
-        fetchPosts();
-        showNotification('Record Expunged', 'success');
-      }
+    if (error) {
+      showNotification(error.message, "error");
+      return;
     }
+
+    const row = data as FactShieldRow;
+    const newPost: Post = {
+      id: row.id,
+      title: row.title,
+      author: row.author ?? "NorthByte Analyst",
+      content: row.content ?? "",
+      date: row.date ?? "",
+      files: parseFiles(row.files),
+    };
+
+    setPosts([newPost, ...posts]);
+    form.reset();
+    showNotification("Analysis Published to Network", "success");
   };
 
-  const showNotification = (msg: string, type: 'success' | 'error') => {
-    setNotifications({ msg, type });
-    setTimeout(() => setNotifications(null), 3000);
+  // --- SİL (Supabase DELETE) ---
+  const handleDeletePost = async (id: number) => {
+    if (!confirm("Confirm Deletion: This action is irreversible.")) return;
+
+    const { error } = await supabase.from("FactShield").delete().eq("id", id);
+
+    if (error) {
+      showNotification(error.message, "error");
+      return;
+    }
+
+    setPosts(posts.filter((p) => p.id !== id));
+    showNotification("Record Expunged", "success");
   };
 
-  // --- TASARIM GÖRÜNÜMLERİ (SENİN KODUN) ---
+  // --- HOME ---
   const renderHome = () => (
     <div className="space-y-6">
-      {posts.length === 0 ? (
+      {loading ? (
         <div className="p-8 text-center text-osint-muted bg-osint-card rounded border border-[#333]">
-          No intelligence reports found in local database.
+          Loading from database...
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="p-8 text-center text-osint-muted bg-osint-card rounded border border-[#333]">
+          No intelligence reports found in database.
         </div>
       ) : (
-        posts.map(post => (
+        posts.map((post) => (
           <article key={post.id} className="bg-osint-card border border-[#333] rounded-lg p-6 shadow-lg hover:border-osint-green transition-colors">
-            <h2 
+            <h2
               className="text-2xl font-mono text-white mb-2 cursor-pointer hover:text-osint-green"
-              onClick={() => { setActivePostId(post.id); setView('post'); }}
+              onClick={() => {
+                setActivePostId(post.id);
+                setView("post");
+              }}
             >
               {post.title}
             </h2>
@@ -157,11 +221,12 @@ const App = () => {
               <span className="mr-4">DATE: {post.date}</span>
               <span>ANALYST: {post.author}</span>
             </div>
-            <p className="text-osint-text mb-6 line-clamp-3 font-sans opacity-80">
-              {post.content}
-            </p>
-            <button 
-              onClick={() => { setActivePostId(post.id); setView('post'); }}
+            <p className="text-osint-text mb-6 line-clamp-3 font-sans">{post.content}</p>
+            <button
+              onClick={() => {
+                setActivePostId(post.id);
+                setView("post");
+              }}
               className="inline-flex items-center text-osint-green border border-osint-green px-4 py-2 rounded hover:bg-osint-green hover:text-black font-mono font-bold transition-all"
             >
               READ FULL ANALYSIS
@@ -172,37 +237,35 @@ const App = () => {
     </div>
   );
 
+  // --- POST DETAIL ---
   const renderPostDetail = () => {
-    const post = posts.find(p => p.id === activePostId);
-    if (!post) return <div>Post not found</div>;
+    if (!activePost) return <div>Post not found</div>;
 
     return (
       <div className="bg-osint-card border border-[#333] rounded-lg p-8 shadow-xl">
-        <button 
-          onClick={() => setView('home')} 
-          className="mb-6 flex items-center text-osint-green hover:underline font-mono"
-        >
+        <button onClick={() => setView("home")} className="mb-6 flex items-center text-osint-green hover:underline font-mono">
           <ChevronLeft size={16} className="mr-1" /> RETURN TO INDEX
         </button>
-        
-        <h1 className="text-3xl font-mono text-white mb-2 border-b-2 border-osint-green pb-4">{post.title}</h1>
+
+        <h1 className="text-3xl font-mono text-white mb-2 border-b-2 border-osint-green pb-4">{activePost.title}</h1>
         <div className="text-sm text-osint-muted mb-8 font-mono flex gap-4">
-          <span>ID: #{post.id}</span>
-          <span>DATE: {post.date}</span>
-          <span>ANALYST: {post.author}</span>
+          <span>ID: #{activePost.id}</span>
+          <span>DATE: {activePost.date}</span>
+          <span>ANALYST: {activePost.author}</span>
         </div>
 
-        <div className="prose prose-invert max-w-none font-sans whitespace-pre-wrap text-lg leading-relaxed mb-8 text-[#ccc]">
-          {post.content}
-        </div>
+        <div className="prose prose-invert max-w-none font-sans whitespace-pre-wrap text-lg leading-relaxed mb-8">{activePost.content}</div>
 
-        {post.files && (
+        {activePost.files.length > 0 && (
           <div className="mt-8 pt-6 border-t border-[#333]">
-            <h3 className="text-white font-mono text-lg mb-4 flex items-center"><Paperclip className="mr-2" size={18}/> EVIDENCE VAULT</h3>
+            <h3 className="text-white font-mono text-lg mb-4">EVIDENCE VAULT</h3>
             <ul className="space-y-2">
-              <li className="flex items-center text-osint-green font-mono">
-                <span className="opacity-80" title="File stored in cloud">{post.files}</span>
-              </li>
+              {activePost.files.map((file, idx) => (
+                <li key={idx} className="flex items-center text-osint-green font-mono">
+                  <Paperclip size={16} className="mr-2" />
+                  <span className="opacity-80">{file}</span>
+                </li>
+              ))}
             </ul>
           </div>
         )}
@@ -210,6 +273,7 @@ const App = () => {
     );
   };
 
+  // --- LOGIN UI ---
   const renderLogin = () => (
     <div className="max-w-md mx-auto mt-10">
       <div className="bg-osint-card border border-[#333] rounded-lg p-8 shadow-xl">
@@ -219,14 +283,26 @@ const App = () => {
           <p className="text-xs text-osint-muted uppercase tracking-widest mt-1">Authorized Personnel Only</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
-          <input name="username" type="text" placeholder="CODENAME" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded font-mono focus:border-osint-green outline-none" required />
-          <input name="password" type="password" placeholder="ACCESS KEY" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded font-mono focus:border-osint-green outline-none" required />
-          <button type="submit" className="w-full bg-osint-green text-black font-bold font-mono py-3 rounded hover:opacity-90 transition-all mt-4">AUTHENTICATE</button>
+          <div>
+            <label className="block text-osint-green font-mono text-sm mb-1">CODENAME</label>
+            <input name="username" type="text" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono" required />
+          </div>
+          <div>
+            <label className="block text-osint-green font-mono text-sm mb-1">ACCESS KEY</label>
+            <input name="password" type="password" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono" required />
+          </div>
+          <button type="submit" className="w-full bg-osint-green text-black font-bold font-mono py-3 rounded hover:bg-opacity-90 transition-all mt-4">
+            AUTHENTICATE
+          </button>
         </form>
+        <div className="mt-4 text-center text-xs text-osint-muted">
+          <p>Demo Credentials: admin / admin123</p>
+        </div>
       </div>
     </div>
   );
 
+  // --- ADMIN ---
   const renderAdmin = () => (
     <div className="space-y-12">
       <div className="bg-osint-card border border-[#333] rounded-lg p-6">
@@ -235,12 +311,26 @@ const App = () => {
         </h2>
         <form onSubmit={handleAddPost} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="title" type="text" placeholder="CASE TITLE" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded font-mono" required />
-            <input name="author" type="text" defaultValue="NorthByte Analyst" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded font-mono" />
+            <div>
+              <label className="block text-osint-green font-mono text-sm mb-1">CASE TITLE</label>
+              <input name="title" type="text" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono" required />
+            </div>
+            <div>
+              <label className="block text-osint-green font-mono text-sm mb-1">ANALYST</label>
+              <input name="author" type="text" defaultValue="NorthByte Analyst" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono" required />
+            </div>
           </div>
-          <textarea name="content" rows={8} className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded font-sans" placeholder="Enter analysis here..." required></textarea>
-          <input name="files" type="file" className="block w-full text-sm text-osint-muted file:bg-[#121212] file:text-osint-green file:border-0" />
-          <button type="submit" className="bg-osint-green text-black font-bold font-mono px-6 py-3 rounded">PUBLISH TO NETWORK</button>
+          <div>
+            <label className="block text-osint-green font-mono text-sm mb-1">INTELLIGENCE DATA</label>
+            <textarea name="content" rows={8} className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-sans" placeholder="Enter analysis here..." required />
+          </div>
+          <div>
+            <label className="block text-osint-green font-mono text-sm mb-1">ATTACHMENTS</label>
+            <input name="files" type="file" multiple className="block w-full text-sm text-osint-muted file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#121212] file:text-osint-green hover:file:bg-[#333]" />
+          </div>
+          <button type="submit" className="bg-osint-green text-black font-bold font-mono px-6 py-3 rounded hover:bg-opacity-90 transition-all">
+            PUBLISH TO NETWORK
+          </button>
         </form>
       </div>
 
@@ -250,11 +340,13 @@ const App = () => {
           <table className="w-full text-left border-collapse font-mono text-sm">
             <thead>
               <tr className="border-b border-[#333] text-osint-green">
-                <th className="p-3">DATE</th><th className="p-3">TITLE</th><th className="p-3">ACTION</th>
+                <th className="p-3">DATE</th>
+                <th className="p-3">TITLE</th>
+                <th className="p-3">ACTION</th>
               </tr>
             </thead>
             <tbody>
-              {posts.map(post => (
+              {posts.map((post) => (
                 <tr key={post.id} className="border-b border-[#333] hover:bg-[#121212]">
                   <td className="p-3 text-osint-muted">{post.date}</td>
                   <td className="p-3 text-white">{post.title}</td>
@@ -265,6 +357,13 @@ const App = () => {
                   </td>
                 </tr>
               ))}
+              {posts.length === 0 && !loading && (
+                <tr>
+                  <td className="p-3 text-osint-muted" colSpan={3}>
+                    No records.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -273,23 +372,31 @@ const App = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col font-sans selection:bg-osint-green selection:text-black bg-[#0a0a0a]">
+    <div className="min-h-screen flex flex-col font-sans selection:bg-osint-green selection:text-black">
       <header className="border-b border-[#333] py-8 text-center bg-[#121212]">
         <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-4xl md:text-5xl font-mono text-white mb-2 tracking-tighter cursor-pointer" onClick={() => setView('home')}>
+          <h1 className="text-4xl md:text-5xl font-mono text-white mb-2 tracking-tighter cursor-pointer" onClick={() => setView("home")}>
             Fact<span className="text-osint-green">Shield</span>.no
           </h1>
           <p className="text-osint-muted font-sans text-lg mb-4">Sannhetens Voktere - Vokter av Fakta, Ikke Meninger.</p>
-          <div className="text-xs font-mono text-osint-green">POWERED BY <a href="#" className="font-bold underline decoration-dotted">NORTHBYTE OSINT DIVISION</a></div>
+
           <nav className="mt-6 flex justify-center space-x-6 text-sm font-mono text-osint-muted">
-            <button onClick={() => setView('home')} className={`hover:text-osint-green ${view === 'home' ? 'text-white' : ''}`}>HOME</button>
+            <button onClick={() => setView("home")} className={`hover:text-osint-green transition-colors ${view === "home" ? "text-white" : ""}`}>
+              HOME
+            </button>
             {user ? (
               <>
-                <button onClick={() => setView('admin')} className={`hover:text-osint-green ${view === 'admin' ? 'text-white' : ''}`}>DASHBOARD</button>
-                <button onClick={handleLogout} className="hover:text-osint-danger">LOGOUT</button>
+                <button onClick={() => setView("admin")} className={`hover:text-osint-green transition-colors ${view === "admin" ? "text-white" : ""}`}>
+                  DASHBOARD
+                </button>
+                <button onClick={handleLogout} className="hover:text-osint-danger transition-colors">
+                  LOGOUT
+                </button>
               </>
             ) : (
-              <button onClick={() => setView('login')} className={`hover:text-osint-green ${view === 'login' ? 'text-white' : ''}`}>ADMIN ACCESS</button>
+              <button onClick={() => setView("login")} className={`hover:text-osint-green transition-colors ${view === "login" ? "text-white" : ""}`}>
+                ADMIN ACCESS
+              </button>
             )}
           </nav>
         </div>
@@ -297,14 +404,19 @@ const App = () => {
 
       <main className="flex-grow container max-w-4xl mx-auto px-4 py-8">
         {notifications && (
-          <div className={`mb-6 p-4 rounded border font-mono ${notifications.type === 'success' ? 'bg-green-900/20 border-osint-green text-osint-green' : 'bg-red-900/20 border-osint-danger text-osint-danger'}`}>
+          <div
+            className={`mb-6 p-4 rounded border font-mono ${
+              notifications.type === "success" ? "bg-green-900/20 border-osint-green text-osint-green" : "bg-red-900/20 border-osint-danger text-osint-danger"
+            }`}
+          >
             [{new Date().toLocaleTimeString()}] SYSTEM: {notifications.msg}
           </div>
         )}
-        {view === 'home' && renderHome()}
-        {view === 'post' && renderPostDetail()}
-        {view === 'login' && renderLogin()}
-        {view === 'admin' && (user ? renderAdmin() : renderLogin())}
+
+        {view === "home" && renderHome()}
+        {view === "post" && renderPostDetail()}
+        {view === "login" && renderLogin()}
+        {view === "admin" && (user ? renderAdmin() : renderLogin())}
       </main>
 
       <footer className="border-t border-[#333] py-8 text-center text-osint-muted text-sm font-mono bg-[#121212]">
@@ -315,5 +427,5 @@ const App = () => {
   );
 };
 
-const root = createRoot(document.getElementById('root')!);
+const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
