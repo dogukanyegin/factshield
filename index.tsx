@@ -18,32 +18,79 @@ interface User {
 
 type View = 'home' | 'login' | 'admin' | 'post';
 
+/**
+ * ✅ IMPORTANT
+ * - Bump STORAGE_VERSION on each deployment when you want all users to refresh storage.
+ * - REMOVE_SEED_IDS removes any old seeded/demo records like "Silent Echo" (id: 1).
+ */
+const STORAGE_VERSION = '2026-02-15-v4';
+const REMOVE_SEED_IDS = new Set<number>([1]); // Silent Echo
+
+// ✅ Optional: a default public post you want to ensure exists everywhere
+const DEFAULT_PUBLIC_POSTS: Post[] = [
+  {
+    id: 1770932478733,
+    title: 'Faktabasert gjennomgang av anklager mot det norske monarkiet',
+    author: 'NorthByte Analyst',
+    content:
+      '“Denne nettsiden er opprettet for å analysere påstander rettet mot det norske monarkiet basert på dokumenterbare kilder, og for å imøtegå det vi vurderer som ubegrunnede eller udokumenterte anklager.”',
+    date: '2026-02-12',
+    files: [],
+  },
+];
+
 const App = () => {
-  // ✅ Always start at home
+  // Always start at home
   const [view, setView] = useState<View>('home');
   const [activePostId, setActivePostId] = useState<number | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [notifications, setNotifications] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // ✅ Load only what exists in localStorage; DO NOT auto-seed demo posts
+  // ✅ Load posts/user from localStorage with versioning + cleanup
   useEffect(() => {
     try {
-      const storedPosts = localStorage.getItem('factshield_posts');
-      setPosts(storedPosts ? JSON.parse(storedPosts) : []);
+      const vKey = 'factshield_storage_version';
+      const prevV = localStorage.getItem(vKey);
 
+      // 1) If version changed -> reset (prevents stale seeded content across browsers)
+      if (prevV !== STORAGE_VERSION) {
+        localStorage.removeItem('factshield_posts');
+        localStorage.removeItem('factshield_user');
+        localStorage.setItem(vKey, STORAGE_VERSION);
+      }
+
+      // 2) Load posts (or empty)
+      const storedPostsRaw = localStorage.getItem('factshield_posts');
+      let loadedPosts: Post[] = storedPostsRaw ? JSON.parse(storedPostsRaw) : [];
+
+      // 3) Remove unwanted seeded/demo posts (e.g., Silent Echo)
+      loadedPosts = loadedPosts.filter((p) => !REMOVE_SEED_IDS.has(p.id));
+
+      // 4) Ensure DEFAULT_PUBLIC_POSTS exist (optional)
+      //    If you DON'T want this behavior, just delete this block.
+      const existingIds = new Set(loadedPosts.map((p) => p.id));
+      for (const p of DEFAULT_PUBLIC_POSTS) {
+        if (!existingIds.has(p.id)) loadedPosts.unshift(p);
+      }
+
+      // 5) Persist cleaned/merged list
+      localStorage.setItem('factshield_posts', JSON.stringify(loadedPosts));
+      setPosts(loadedPosts);
+
+      // 6) Load user
       const storedUser = localStorage.getItem('factshield_user');
       setUser(storedUser ? JSON.parse(storedUser) : null);
     } catch {
-      // If storage is corrupted, reset cleanly
       setPosts([]);
       setUser(null);
       localStorage.removeItem('factshield_posts');
       localStorage.removeItem('factshield_user');
+      localStorage.removeItem('factshield_storage_version');
     }
   }, []);
 
-  // ✅ Failsafe: If no active post, never allow "post" view
+  // Failsafe: If no active post, never allow "post" view
   useEffect(() => {
     if (view === 'post' && activePostId == null) {
       setView('home');
@@ -120,7 +167,6 @@ const App = () => {
       const newPosts = posts.filter((p) => p.id !== id);
       savePosts(newPosts);
 
-      // If deleted the active one, safely go home
       if (activePostId === id) {
         setActivePostId(null);
         setView('home');
@@ -252,7 +298,10 @@ const App = () => {
               required
             />
           </div>
-          <button type="submit" className="w-full bg-osint-green text-black font-bold font-mono py-3 rounded hover:bg-opacity-90 transition-all mt-4">
+          <button
+            type="submit"
+            className="w-full bg-osint-green text-black font-bold font-mono py-3 rounded hover:bg-opacity-90 transition-all mt-4"
+          >
             AUTHENTICATE
           </button>
         </form>
