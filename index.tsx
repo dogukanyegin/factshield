@@ -1,11 +1,11 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 import { Lock, FileText, Trash2, ChevronLeft, Paperclip } from "lucide-react";
 
 /**
  * =========================
- *  SUPABASE AYARLARI
+ *  SUPABASE
  * =========================
  */
 const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co";
@@ -13,6 +13,9 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ✅ TABLO ADI KESİN: public.factshield
+const TABLE = "factshield";
 
 // UI: admin/admin123 -> Supabase Auth email ile giriş
 const ADMIN_EMAIL = "dogukan.yegin@hotmail.com";
@@ -35,8 +38,8 @@ interface User {
   username: string;
 }
 
-type factshieldRow = {
-  id: number | string; // bigint string gelebilir
+type FactshieldRow = {
+  id: number | string; // bigint bazen string gelebilir
   title: string;
   author: string | null;
   content: string | null;
@@ -52,7 +55,6 @@ function parseFiles(filesText: string | null): string[] {
   } catch {
     // ignore
   }
-  // fallback "a.pdf,b.txt"
   return filesText
     .split(",")
     .map((s) => s.trim())
@@ -64,7 +66,9 @@ function serializeFiles(files: string[]): string {
 }
 
 function isAbortError(err: unknown) {
-  return err instanceof DOMException && err.name === "AbortError";
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  if (typeof err === "object" && err && "name" in err) return (err as any).name === "AbortError";
+  return false;
 }
 
 const App = () => {
@@ -76,6 +80,7 @@ const App = () => {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [publishing, setPublishing] = useState(false);
 
   const [notifications, setNotifications] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
@@ -88,24 +93,23 @@ const App = () => {
 
   /**
    * =========================
-   *  DATA LOAD
+   *  LOAD POSTS
    * =========================
    */
   const loadPosts = async () => {
     setLoadingPosts(true);
     try {
       const { data, error } = await supabase
-        .from("FactShield")
+        .from(TABLE)
         .select("id,title,author,content,date,files")
         .order("id", { ascending: false });
 
       if (error) {
         showNotification(error.message, "error");
-        setLoadingPosts(false);
         return;
       }
 
-      const mapped: Post[] = ((data ?? []) as factshieldRow[]).map((row) => ({
+      const mapped: Post[] = ((data ?? []) as FactshieldRow[]).map((row) => ({
         id: Number(row.id),
         title: row.title,
         author: row.author ?? "NorthByte Analyst",
@@ -116,9 +120,7 @@ const App = () => {
 
       setPosts(mapped);
     } catch (err) {
-      if (!isAbortError(err)) {
-        showNotification(String(err), "error");
-      }
+      if (!isAbortError(err)) showNotification(String(err), "error");
     } finally {
       setLoadingPosts(false);
     }
@@ -134,13 +136,9 @@ const App = () => {
 
     (async () => {
       const { data, error } = await supabase.auth.getSession();
-
       if (!mounted) return;
 
-      if (error) {
-        // session hatası olursa logla ama siteyi kilitleme
-        showNotification(error.message, "error");
-      }
+      if (error) showNotification(error.message, "error");
 
       const email = data.session?.user?.email ?? null;
       if (email === ADMIN_EMAIL) setUser({ username: "admin" });
@@ -188,7 +186,6 @@ const App = () => {
     });
 
     if (error) {
-      // ✅ BURADA artık gerçek Supabase hatasını gösteriyoruz (debug için şart)
       showNotification(`Access Denied: ${error.message}`, "error");
       return;
     }
@@ -217,6 +214,7 @@ const App = () => {
       showNotification("Unauthorized: Please login", "error");
       return;
     }
+    if (publishing) return;
 
     const form = e.target as HTMLFormElement;
     const title = (form.elements.namedItem("title") as HTMLInputElement).value;
@@ -234,9 +232,10 @@ const App = () => {
       files: serializeFiles(fileNames),
     };
 
+    setPublishing(true);
     try {
       const { data, error } = await supabase
-        .from("factShield")
+        .from(TABLE)
         .insert(payload)
         .select("id,title,author,content,date,files")
         .single();
@@ -246,7 +245,7 @@ const App = () => {
         return;
       }
 
-      const row = data as factshieldRow;
+      const row = data as FactshieldRow;
       const newPost: Post = {
         id: Number(row.id),
         title: row.title,
@@ -261,6 +260,8 @@ const App = () => {
       showNotification("Analysis Published to Network", "success");
     } catch (err) {
       if (!isAbortError(err)) showNotification(String(err), "error");
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -269,10 +270,9 @@ const App = () => {
       showNotification("Unauthorized: Please login", "error");
       return;
     }
-
     if (!confirm("Confirm Deletion: This action is irreversible.")) return;
 
-    const { error } = await supabase.from("factshield").delete().eq("id", id);
+    const { error } = await supabase.from(TABLE).delete().eq("id", id);
     if (error) {
       showNotification(error.message, "error");
       return;
@@ -284,7 +284,7 @@ const App = () => {
 
   /**
    * =========================
-   *  VIEWS (UI AYNI KALDI)
+   *  UI (TASARIM AYNI)
    * =========================
    */
   const renderHome = () => (
@@ -317,7 +317,7 @@ const App = () => {
               <span>ANALYST: {post.author}</span>
             </div>
 
-            {/* ✅ KISIT KALDIRILDI: line-clamp-3 yok */}
+            {/* ✅ KISIT YOK: line-clamp kaldırıldı */}
             <p className="text-osint-text mb-6 font-sans whitespace-pre-wrap">{post.content}</p>
 
             <button
@@ -344,9 +344,7 @@ const App = () => {
           <ChevronLeft size={16} className="mr-1" /> RETURN TO INDEX
         </button>
 
-        <h1 className="text-3xl font-mono text-white mb-2 border-b-2 border-osint-green pb-4">
-          {activePost.title}
-        </h1>
+        <h1 className="text-3xl font-mono text-white mb-2 border-b-2 border-osint-green pb-4">{activePost.title}</h1>
         <div className="text-sm text-osint-muted mb-8 font-mono flex gap-4">
           <span>ID: #{activePost.id}</span>
           <span>DATE: {activePost.date}</span>
@@ -364,9 +362,7 @@ const App = () => {
               {activePost.files.map((file, idx) => (
                 <li key={idx} className="flex items-center text-osint-green font-mono">
                   <Paperclip size={16} className="mr-2" />
-                  <span className="cursor-not-allowed opacity-80" title="File download simulated">
-                    {file}
-                  </span>
+                  <span className="opacity-80">{file}</span>
                 </li>
               ))}
             </ul>
@@ -405,10 +401,7 @@ const App = () => {
               required
             />
           </div>
-          <button
-            type="submit"
-            className="w-full bg-osint-green text-black font-bold font-mono py-3 rounded hover:bg-opacity-90 transition-all mt-4"
-          >
+          <button type="submit" className="w-full bg-osint-green text-black font-bold font-mono py-3 rounded hover:bg-opacity-90 transition-all mt-4">
             AUTHENTICATE
           </button>
         </form>
@@ -421,7 +414,6 @@ const App = () => {
 
   const renderAdmin = () => (
     <div className="space-y-12">
-      {/* Create Post */}
       <div className="bg-osint-card border border-[#333] rounded-lg p-6">
         <h2 className="text-xl font-mono text-white mb-6 flex items-center">
           <FileText className="mr-2 text-osint-green" /> NEW INTELLIGENCE REPORT
@@ -430,53 +422,31 @@ const App = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-osint-green font-mono text-sm mb-1">CASE TITLE</label>
-              <input
-                name="title"
-                type="text"
-                className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono"
-                required
-              />
+              <input name="title" type="text" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono" required />
             </div>
             <div>
               <label className="block text-osint-green font-mono text-sm mb-1">ANALYST</label>
-              <input
-                name="author"
-                type="text"
-                defaultValue="NorthByte Analyst"
-                className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono"
-                required
-              />
+              <input name="author" type="text" defaultValue="NorthByte Analyst" className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono" required />
             </div>
           </div>
           <div>
             <label className="block text-osint-green font-mono text-sm mb-1">INTELLIGENCE DATA</label>
-            <textarea
-              name="content"
-              rows={8}
-              className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-sans"
-              placeholder="Enter analysis here..."
-              required
-            ></textarea>
+            <textarea name="content" rows={8} className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-sans" placeholder="Enter analysis here..." required />
           </div>
           <div>
             <label className="block text-osint-green font-mono text-sm mb-1">ATTACHMENTS</label>
-            <input
-              name="files"
-              type="file"
-              multiple
-              className="block w-full text-sm text-osint-muted file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#121212] file:text-osint-green hover:file:bg-[#333]"
-            />
+            <input name="files" type="file" multiple className="block w-full text-sm text-osint-muted file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#121212] file:text-osint-green hover:file:bg-[#333]" />
           </div>
           <button
             type="submit"
-            className="bg-osint-green text-black font-bold font-mono px-6 py-3 rounded hover:bg-opacity-90 transition-all"
+            disabled={publishing}
+            className={`bg-osint-green text-black font-bold font-mono px-6 py-3 rounded hover:bg-opacity-90 transition-all ${publishing ? "opacity-60 cursor-not-allowed" : ""}`}
           >
-            PUBLISH TO NETWORK
+            {publishing ? "PUBLISHING..." : "PUBLISH TO NETWORK"}
           </button>
         </form>
       </div>
 
-      {/* Existing Posts List */}
       <div className="bg-osint-card border border-[#333] rounded-lg p-6">
         <h2 className="text-xl font-mono text-white mb-6">DATABASE RECORDS</h2>
         <div className="overflow-x-auto">
@@ -494,10 +464,7 @@ const App = () => {
                   <td className="p-3 text-osint-muted">{post.date}</td>
                   <td className="p-3 text-white">{post.title}</td>
                   <td className="p-3">
-                    <button
-                      onClick={() => handleDeletePost(post.id)}
-                      className="text-osint-danger hover:text-red-400 flex items-center"
-                    >
+                    <button onClick={() => handleDeletePost(post.id)} className="text-osint-danger hover:text-red-400 flex items-center">
                       <Trash2 size={16} className="mr-1" /> DELETE
                     </button>
                   </td>
@@ -517,23 +484,17 @@ const App = () => {
     </div>
   );
 
-  // authReady bitmeden navbar flicker olmasın
   const canShowAdminNav = authReady && !!user;
 
   return (
     <div className="min-h-screen flex flex-col font-sans selection:bg-osint-green selection:text-black">
-      {/* Header */}
       <header className="border-b border-[#333] py-8 text-center bg-[#121212]">
         <div className="max-w-4xl mx-auto px-4">
-          <h1
-            className="text-4xl md:text-5xl font-mono text-white mb-2 tracking-tighter cursor-pointer"
-            onClick={() => setView("home")}
-          >
+          <h1 className="text-4xl md:text-5xl font-mono text-white mb-2 tracking-tighter cursor-pointer" onClick={() => setView("home")}>
             Fact<span className="text-osint-green">Shield</span>.no
           </h1>
-          <p className="text-osint-muted font-sans text-lg mb-4">
-            Sannhetens Voktere - Vokter av Fakta, Ikke Meninger.
-          </p>
+          <p className="text-osint-muted font-sans text-lg mb-4">Sannhetens Voktere - Vokter av Fakta, Ikke Meninger.</p>
+
           <div className="text-xs font-mono text-osint-green">
             POWERED BY{" "}
             <a href="#" className="font-bold underline decoration-dotted">
@@ -542,19 +503,13 @@ const App = () => {
           </div>
 
           <nav className="mt-6 flex justify-center space-x-6 text-sm font-mono text-osint-muted">
-            <button
-              onClick={() => setView("home")}
-              className={`hover:text-osint-green transition-colors ${view === "home" ? "text-white" : ""}`}
-            >
+            <button onClick={() => setView("home")} className={`hover:text-osint-green transition-colors ${view === "home" ? "text-white" : ""}`}>
               HOME
             </button>
 
             {canShowAdminNav ? (
               <>
-                <button
-                  onClick={() => setView("admin")}
-                  className={`hover:text-osint-green transition-colors ${view === "admin" ? "text-white" : ""}`}
-                >
+                <button onClick={() => setView("admin")} className={`hover:text-osint-green transition-colors ${view === "admin" ? "text-white" : ""}`}>
                   DASHBOARD
                 </button>
                 <button onClick={handleLogout} className="hover:text-osint-danger transition-colors flex items-center">
@@ -562,10 +517,7 @@ const App = () => {
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setView("login")}
-                className={`hover:text-osint-green transition-colors ${view === "login" ? "text-white" : ""}`}
-              >
+              <button onClick={() => setView("login")} className={`hover:text-osint-green transition-colors ${view === "login" ? "text-white" : ""}`}>
                 ADMIN ACCESS
               </button>
             )}
@@ -573,7 +525,6 @@ const App = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-grow container max-w-4xl mx-auto px-4 py-8">
         {notifications && (
           <div
@@ -593,7 +544,6 @@ const App = () => {
         {view === "admin" && (user ? renderAdmin() : renderLogin())}
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-[#333] py-8 text-center text-osint-muted text-sm font-mono bg-[#121212]">
         <p>&copy; 2026 FactShield.no | Independent Operation</p>
         <p className="mt-2 text-xs opacity-50">Secure Connection Established. Logging Active.</p>
@@ -602,7 +552,6 @@ const App = () => {
   );
 };
 
+// ✅ sadece 1 kez
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
-
-
