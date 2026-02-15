@@ -35,7 +35,7 @@ interface User {
   username: string;
 }
 
-type factShieldRow = {
+type factshieldRow = {
   id: number | string; // bigint string gelebilir
   title: string;
   author: string | null;
@@ -105,7 +105,7 @@ const App = () => {
         return;
       }
 
-      const mapped: Post[] = ((data ?? []) as factShieldRow[]).map((row) => ({
+      const mapped: Post[] = ((data ?? []) as factshieldRow[]).map((row) => ({
         id: Number(row.id),
         title: row.title,
         author: row.author ?? "NorthByte Analyst",
@@ -246,7 +246,7 @@ const App = () => {
         return;
       }
 
-      const row = data as factShieldRow;
+      const row = data as factshieldRow;
       const newPost: Post = {
         id: Number(row.id),
         title: row.title,
@@ -272,7 +272,7 @@ const App = () => {
 
     if (!confirm("Confirm Deletion: This action is irreversible.")) return;
 
-    const { error } = await supabase.from("factShield").delete().eq("id", id);
+    const { error } = await supabase.from("factshield").delete().eq("id", id);
     if (error) {
       showNotification(error.message, "error");
       return;
@@ -604,4 +604,5 @@ const App = () => {
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
+
 
