@@ -28,14 +28,8 @@ const App = () => {
 
   // Load data from localStorage on mount
   useEffect(() => {
-    const storedPosts = localStorage.getItem('factshield_posts');
-    if (storedPosts) {
-      setPosts(JSON.parse(storedPosts));
-    } else {
-      setPosts(INITIAL_POSTS);
-      localStorage.setItem('factshield_posts', JSON.stringify(INITIAL_POSTS));
-    }
-
+   const storedPosts = localStorage.getItem("factshield_posts");
+setPosts(storedPosts ? JSON.parse(storedPosts) : []);
     const storedUser = localStorage.getItem('factshield_user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
