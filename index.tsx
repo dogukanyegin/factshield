@@ -16,17 +16,7 @@ interface User {
   username: string;
 }
 
-// Mock Initial Data
-const INITIAL_POSTS: Post[] = [
-  {
-    id: 1,
-    title: "Operation: Silent Echo",
-    author: "NorthByte Analyst",
-    date: "2024-05-15",
-    content: "Analysis of deep-sea cable anomalies suggests targeted interference pattern matching Group 77 signatures. Preliminary signal intelligence reveals coordinated frequency hopping.",
-    files: ["spectrum_analysis_v2.pdf", "signal_log_raw.txt"]
-  }
-];
+
 
 const App = () => {
   // State
