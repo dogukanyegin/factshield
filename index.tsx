@@ -38,7 +38,7 @@ interface User {
   username: string;
 }
 
-type FactshieldRow = {
+type factshieldRow = {
   id: number | string; // bigint bazen string gelebilir
   title: string;
   author: string | null;
@@ -109,7 +109,7 @@ const App = () => {
         return;
       }
 
-      const mapped: Post[] = ((data ?? []) as FactshieldRow[]).map((row) => ({
+      const mapped: Post[] = ((data ?? []) as factshieldRow[]).map((row) => ({
         id: Number(row.id),
         title: row.title,
         author: row.author ?? "NorthByte Analyst",
@@ -245,7 +245,7 @@ const App = () => {
         return;
       }
 
-      const row = data as FactshieldRow;
+      const row = data as factshieldRow;
       const newPost: Post = {
         id: Number(row.id),
         title: row.title,
@@ -555,3 +555,4 @@ const App = () => {
 // ✅ sadece 1 kez
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
+
