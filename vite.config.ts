@@ -7,8 +7,6 @@ export default defineConfig({
   base: '/factshield/',  // BU SATIR KRİTİK! GitHub Pages alt klasörü için şart.
 })
 
-export default defineConfig(({ mode }) => {
-  loadEnv(mode, process.cwd(), "");
 
   return {
     base: mode === "production" ? "/factshield/" : "/",
