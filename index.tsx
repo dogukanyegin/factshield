@@ -7,7 +7,7 @@ import { Lock, FileText, Trash2, ChevronLeft, Paperclip } from "lucide-react";
    SUPABASE CONFIG
 ================================ */
 const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY_HERE";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ADMIN_EMAIL = "dogukan.yegin@hotmail.com";
@@ -313,3 +313,4 @@ const App = () => {
 ================================ */
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
+
