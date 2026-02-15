@@ -1,27 +1,14 @@
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
 import path from "path";
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
+  loadEnv(mode, process.cwd(), "");
+
   return {
-    // 1. GitHub Pages Ayarı (KRİTİK)
-    // Hem canlıda hem lokalde /factshield/ yolunu kullanır, kafa karışıklığını önler.
-    base: "/factshield/",
-
-    // 2. React Eklentisi
+    base: mode === "production" ? "/factshield/" : "/",
     plugins: [react()],
-
-    // 3. Port Ayarları (Eski ayarın)
-    server: {
-      port: 3000,
-      host: "0.0.0.0",
-    },
-
-    // 4. Alias Ayarı (Eski ayarın - @ kullanımı için şart)
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
-    },
+    server: { port: 3000, host: "0.0.0.0" },
+    resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   };
 });
