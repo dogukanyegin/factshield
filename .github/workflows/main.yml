@@ -29,6 +29,9 @@ jobs:
       - name: Install
         run: npm install
 
+      - name: Install Supabase client (hotfix)
+        run: npm install @supabase/supabase-js
+
       - name: Build
         run: npm run build
 
