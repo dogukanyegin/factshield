@@ -7,7 +7,7 @@ import { Shield, Lock, FileText, Trash2, LogOut, ChevronLeft, Paperclip } from '
 // --- AYARLAR ---
 // URL'yi tırnak içine almayı unutma!
 const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co"; 
-const SUPABASE_KEY = "sb_publishable_CfyqFcbhHfB-NUgFgUOeEg_5KTX2a01i";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
 interface Post {
   id: number;
   title: string;
@@ -339,4 +339,5 @@ const App = () => {
 
 const root = createRoot(document.getElementById('root')!);
 root.render(<App />);
+
 
