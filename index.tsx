@@ -12,7 +12,15 @@ const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ✅ Session persist + refresh için (tasarıma dokunmaz, sadece auth fix)
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
+  },
+});
 
 // ✅ TABLO ADI (SENİN DB’DE: public.factshield)
 const TABLE = "factshield";
@@ -88,11 +96,16 @@ function isAbortError(err: unknown) {
   return err instanceof DOMException && err.name === "AbortError";
 }
 
-// ✅ Session kesinleşsin diye mini helper
-async function getSessionUser() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  return data.session?.user ?? null;
+// ✅ Session oluşmasını bekleyen helper (çok kısa)
+async function waitForSession(maxMs = 2500) {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (data.session?.user) return data.session.user;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return null;
 }
 
 const App = () => {
@@ -165,19 +178,18 @@ const App = () => {
     let mounted = true;
 
     (async () => {
-      try {
-        const u = await getSessionUser();
-        if (!mounted) return;
+      const { data, error } = await supabase.auth.getSession();
 
-        const email = u?.email ?? null;
-        if (email === ADMIN_EMAIL) setUser({ username: "admin" });
-        else setUser(null);
-      } catch (e) {
-        if (mounted) showNotification(String(e), "error");
-      } finally {
-        if (mounted) setAuthReady(true);
-        if (mounted) await loadPosts();
-      }
+      if (!mounted) return;
+
+      if (error) showNotification(error.message, "error");
+
+      const email = data.session?.user?.email ?? null;
+      if (email === ADMIN_EMAIL) setUser({ username: "admin" });
+      else setUser(null);
+
+      setAuthReady(true);
+      await loadPosts();
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -212,7 +224,6 @@ const App = () => {
       return;
     }
 
-    // ✅ signIn sonucunu kullan (session burada gelir)
     const { data: signInData, error } = await supabase.auth.signInWithPassword({
       email: ADMIN_EMAIL,
       password,
@@ -223,18 +234,20 @@ const App = () => {
       return;
     }
 
-    // ✅ Session garanti (bazı tarayıcı/ayar durumlarında event gecikebilir)
-    const sessionUser = signInData.session?.user ?? (await getSessionUser());
-    if (!sessionUser) {
+    // ✅ Session garanti: signIn response + kısa bekleme
+    let u = signInData.session?.user ?? null;
+    if (!u) u = await waitForSession(2500);
+
+    if (!u) {
       showNotification(
-        "Login OK but session missing. Check browser storage/cookies (disable strict tracking/adblock) and try again.",
+        "Login OK but session not created. Check browser storage/cookies (disable strict tracking/adblock) and try again.",
         "error"
       );
       return;
     }
 
-    // ✅ Admin mi?
-    if ((sessionUser.email ?? "").toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    const email = (u.email ?? "").toLowerCase();
+    if (email !== ADMIN_EMAIL.toLowerCase()) {
       await supabase.auth.signOut();
       showNotification("Access Denied: Not authorized for admin.", "error");
       return;
@@ -266,9 +279,13 @@ const App = () => {
       return;
     }
 
-    // ✅ Session yoksa publish yapma (RLS authenticated gerektiriyor)
-    const sessionUser = await getSessionUser();
-    if (!sessionUser) {
+    // ✅ Session yoksa publish'e başlamadan dön (takılmayı bitirir)
+    const { data: sess, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      showNotification(sessErr.message, "error");
+      return;
+    }
+    if (!sess.session?.user) {
       showNotification("Unauthorized: Session missing. Please login again.", "error");
       return;
     }
@@ -331,8 +348,12 @@ const App = () => {
     }
 
     // ✅ Session yoksa delete yapma
-    const sessionUser = await getSessionUser();
-    if (!sessionUser) {
+    const { data: sess, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      showNotification(sessErr.message, "error");
+      return;
+    }
+    if (!sess.session?.user) {
       showNotification("Unauthorized: Session missing. Please login again.", "error");
       return;
     }
