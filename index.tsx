@@ -474,8 +474,14 @@ const App = () => {
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-osint-green font-mono text-sm mb-1">CODENAME</label>
+            <label
+              htmlFor="login-username"
+              className="block text-osint-green font-mono text-sm mb-1"
+            >
+              CODENAME
+            </label>
             <input
+              id="login-username"
               name="username"
               type="text"
               autoComplete="username"
@@ -484,8 +490,14 @@ const App = () => {
             />
           </div>
           <div>
-            <label className="block text-osint-green font-mono text-sm mb-1">ACCESS KEY</label>
+            <label
+              htmlFor="login-password"
+              className="block text-osint-green font-mono text-sm mb-1"
+            >
+              ACCESS KEY
+            </label>
             <input
+              id="login-password"
               name="password"
               type="password"
               autoComplete="current-password"
@@ -516,8 +528,14 @@ const App = () => {
         <form onSubmit={handleAddPost} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-osint-green font-mono text-sm mb-1">CASE TITLE</label>
+              <label
+                htmlFor="post-title"
+                className="block text-osint-green font-mono text-sm mb-1"
+              >
+                CASE TITLE
+              </label>
               <input
+                id="post-title"
                 name="title"
                 type="text"
                 className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-mono"
@@ -525,8 +543,14 @@ const App = () => {
               />
             </div>
             <div>
-              <label className="block text-osint-green font-mono text-sm mb-1">ANALYST</label>
+              <label
+                htmlFor="post-author"
+                className="block text-osint-green font-mono text-sm mb-1"
+              >
+                ANALYST
+              </label>
               <input
+                id="post-author"
                 name="author"
                 type="text"
                 defaultValue="NorthByte Analyst"
@@ -536,8 +560,14 @@ const App = () => {
             </div>
           </div>
           <div>
-            <label className="block text-osint-green font-mono text-sm mb-1">INTELLIGENCE DATA</label>
+            <label
+              htmlFor="post-content"
+              className="block text-osint-green font-mono text-sm mb-1"
+            >
+              INTELLIGENCE DATA
+            </label>
             <textarea
+              id="post-content"
               name="content"
               rows={8}
               className="w-full bg-[#121212] border border-[#333] text-white p-3 rounded focus:outline-none focus:border-osint-green font-sans"
@@ -546,8 +576,14 @@ const App = () => {
             ></textarea>
           </div>
           <div>
-            <label className="block text-osint-green font-mono text-sm mb-1">ATTACHMENTS</label>
+            <label
+              htmlFor="post-files"
+              className="block text-osint-green font-mono text-sm mb-1"
+            >
+              ATTACHMENTS
+            </label>
             <input
+              id="post-files"
               name="files"
               type="file"
               multiple
