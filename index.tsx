@@ -12,15 +12,20 @@ const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
 
-// ✅ Session persist + refresh için (tasarıma dokunmaz, sadece auth fix)
+// ✅ Session persist + refresh + localStorage (session yok problemini çözer)
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: typeof window !== "undefined" ? window.localStorage : undefined,
+    storageKey: "factshield-auth",
   },
 });
+
+// ✅ DevTools için (UI bozulmaz): console’da window.supabase ile test edersin
+// @ts-ignore
+if (typeof window !== "undefined") (window as any).supabase = supabase;
 
 // ✅ TABLO ADI (SENİN DB’DE: public.factshield)
 const TABLE = "factshield";
@@ -94,18 +99,6 @@ function parseFiles(v: unknown): string[] {
 
 function isAbortError(err: unknown) {
   return err instanceof DOMException && err.name === "AbortError";
-}
-
-// ✅ Session oluşmasını bekleyen helper (çok kısa)
-async function waitForSession(maxMs = 2500) {
-  const start = Date.now();
-  while (Date.now() - start < maxMs) {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (data.session?.user) return data.session.user;
-    await new Promise((r) => setTimeout(r, 150));
-  }
-  return null;
 }
 
 const App = () => {
@@ -185,7 +178,7 @@ const App = () => {
       if (error) showNotification(error.message, "error");
 
       const email = data.session?.user?.email ?? null;
-      if (email === ADMIN_EMAIL) setUser({ username: "admin" });
+      if (email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) setUser({ username: "admin" });
       else setUser(null);
 
       setAuthReady(true);
@@ -194,7 +187,7 @@ const App = () => {
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const email = session?.user?.email ?? null;
-      if (email === ADMIN_EMAIL) setUser({ username: "admin" });
+      if (email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) setUser({ username: "admin" });
       else setUser(null);
 
       await loadPosts();
@@ -224,7 +217,7 @@ const App = () => {
       return;
     }
 
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: ADMIN_EMAIL,
       password,
     });
@@ -234,19 +227,23 @@ const App = () => {
       return;
     }
 
-    // ✅ Session garanti: signIn response + kısa bekleme
-    let u = signInData.session?.user ?? null;
-    if (!u) u = await waitForSession(2500);
+    // ✅ Login sonrası session zorunlu doğrulama
+    const { data: sess, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      showNotification(sessErr.message, "error");
+      return;
+    }
 
-    if (!u) {
+    const sUser = sess.session?.user ?? null;
+    if (!sUser) {
       showNotification(
-        "Login OK but session not created. Check browser storage/cookies (disable strict tracking/adblock) and try again.",
+        "Login OK but session missing. Browser may block storage/cookies (try incognito, disable adblock/tracking prevention).",
         "error"
       );
       return;
     }
 
-    const email = (u.email ?? "").toLowerCase();
+    const email = (sUser.email ?? "").toLowerCase();
     if (email !== ADMIN_EMAIL.toLowerCase()) {
       await supabase.auth.signOut();
       showNotification("Access Denied: Not authorized for admin.", "error");
@@ -279,7 +276,7 @@ const App = () => {
       return;
     }
 
-    // ✅ Session yoksa publish'e başlamadan dön (takılmayı bitirir)
+    // ✅ Session yoksa publish'e girmeden dur (PUBLISHING takılmasını bitirir)
     const { data: sess, error: sessErr } = await supabase.auth.getSession();
     if (sessErr) {
       showNotification(sessErr.message, "error");
@@ -304,9 +301,7 @@ const App = () => {
         title,
         author,
         content,
-        // DB'de timestamp var: ISO gönder
         date: new Date().toISOString(),
-        // json array
         files: fileNames,
       };
 
