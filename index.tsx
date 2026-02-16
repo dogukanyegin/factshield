@@ -12,23 +12,29 @@ const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
 
-// ✅ Session persist + refresh + localStorage (Pages için stabil)
+/**
+ * ✅ GitHub Pages için sağlam auth ayarı
+ * - persistSession: localStorage
+ * - autoRefreshToken: token yenileme
+ * - detectSessionInUrl: magic link/redirect için
+ */
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: typeof window !== "undefined" ? window.localStorage : undefined,
-    // ✅ aynı domainde birden fazla supabase app varsa çakışmasın
-    storageKey: "factshield-auth",
   },
 });
 
-// ✅ DevTools: console’da window.supabase
+// ✅ DevTools test (UI bozulmaz)
 // @ts-ignore
 if (typeof window !== "undefined") (window as any).supabase = supabase;
 
+// ✅ TABLO ADI (public.factshield)
 const TABLE = "factshield";
+
+// ✅ Admin email (Supabase Auth'da var)
 const ADMIN_EMAIL = "dogukan.yegin@hotmail.com";
 
 /**
@@ -91,6 +97,24 @@ function isAbortError(err: unknown) {
   return err instanceof DOMException && err.name === "AbortError";
 }
 
+async function ensureAdminSession(): Promise<{ ok: true } | { ok: false; msg: string }> {
+  // ✅ Token tazele (Pages'te kritik)
+  const { error: refreshErr } = await supabase.auth.refreshSession();
+  if (refreshErr) return { ok: false, msg: `Session refresh failed: ${refreshErr.message}` };
+
+  // ✅ getUser server-validated (getSession yerine)
+  const { data, error } = await supabase.auth.getUser();
+  if (error) return { ok: false, msg: error.message };
+
+  const email = (data.user?.email ?? "").toLowerCase();
+  if (!data.user) return { ok: false, msg: "Session missing. Please login again." };
+  if (email !== ADMIN_EMAIL.toLowerCase()) {
+    return { ok: false, msg: "Access denied: not authorized for admin." };
+  }
+
+  return { ok: true };
+}
+
 const App = () => {
   const [view, setView] = useState<"home" | "login" | "admin" | "post">("home");
   const [activePostId, setActivePostId] = useState<number | null>(null);
@@ -114,7 +138,13 @@ const App = () => {
 
   const showNotification = (msg: string, type: "success" | "error") => {
     setNotifications({ msg, type });
-    setTimeout(() => setNotifications(null), 3000);
+
+    // ✅ “hiçbir şey olmuyor” hissini bitirir: mesajı görünür yap
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    setTimeout(() => setNotifications(null), 4000);
   };
 
   /**
@@ -160,66 +190,38 @@ const App = () => {
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
-      // ✅ Pages için en stabil: getSession (localStorage)
-      const { data, error } = await supabase.auth.getSession();
+    const init = async () => {
+      // ✅ getUser = server validated
+      const { data, error } = await supabase.auth.getUser();
       if (!mounted) return;
 
-      if (error) showNotification(error.message, "error");
-
-      const email = data.session?.user?.email ?? null;
-      if (email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) setUser({ username: "admin" });
-      else setUser(null);
+      if (error) {
+        console.error(error);
+        setUser(null);
+      } else {
+        const email = data.user?.email ?? null;
+        if (email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) setUser({ username: "admin" });
+        else setUser(null);
+      }
 
       setAuthReady(true);
       await loadPosts();
-    })();
+    };
+
+    init();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const email = session?.user?.email ?? null;
       if (email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) setUser({ username: "admin" });
       else setUser(null);
-      await loadPosts();
     });
 
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  /**
-   * =========================
-   *  AUTH GUARD (publish/delete)
-   * =========================
-   * ✅ getUser() yerine getSession(): 1 kerelik login / publish takılması biter
-   */
-  const ensureAdmin = async (): Promise<boolean> => {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      showNotification(error.message, "error");
-      return false;
-    }
-
-    const s = data.session;
-    if (!s?.user) {
-      showNotification("Unauthorized: Session missing. Please login again.", "error");
-      setUser(null);
-      setView("login");
-      return false;
-    }
-
-    const email = (s.user.email ?? "").toLowerCase();
-    if (email !== ADMIN_EMAIL.toLowerCase()) {
-      showNotification("Access Denied: Not authorized for admin.", "error");
-      await supabase.auth.signOut();
-      setUser(null);
-      setView("login");
-      return false;
-    }
-
-    return true;
-  };
 
   /**
    * =========================
@@ -248,9 +250,13 @@ const App = () => {
       return;
     }
 
-    // ✅ login sonrası session’ın gerçekten yazıldığını doğrula
-    const ok = await ensureAdmin();
-    if (!ok) return;
+    // ✅ Login sonrası server-validated user kontrol
+    const gate = await ensureAdminSession();
+    if (!gate.ok) {
+      await supabase.auth.signOut();
+      showNotification(gate.msg, "error");
+      return;
+    }
 
     setUser({ username: "admin" });
     setView("admin");
@@ -261,7 +267,6 @@ const App = () => {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) showNotification(error.message, "error");
-    setUser(null);
     setView("home");
     showNotification("Logged Out", "success");
   };
@@ -276,12 +281,17 @@ const App = () => {
 
     if (!user) {
       showNotification("Unauthorized: Please login", "error");
-      setView("login");
       return;
     }
 
-    const ok = await ensureAdmin();
-    if (!ok) return;
+    // ✅ Publish öncesi kesin admin/session doğrulaması
+    const gate = await ensureAdminSession();
+    if (!gate.ok) {
+      showNotification(gate.msg, "error");
+      setUser(null);
+      setView("login");
+      return;
+    }
 
     const form = e.target as HTMLFormElement;
     const title = (form.elements.namedItem("title") as HTMLInputElement).value;
@@ -308,10 +318,8 @@ const App = () => {
         .single();
 
       if (error) {
-        const extra = [error.code, (error as any).details, (error as any).hint]
-          .filter(Boolean)
-          .join(" | ");
-        showNotification(extra ? `${error.message} | ${extra}` : error.message, "error");
+        console.error("INSERT ERROR:", error);
+        showNotification(`Insert failed (${(error as any).code ?? "no_code"}): ${error.message}`, "error");
         return;
       }
 
@@ -338,21 +346,23 @@ const App = () => {
   const handleDeletePost = async (id: number) => {
     if (!user) {
       showNotification("Unauthorized: Please login", "error");
-      setView("login");
       return;
     }
 
-    const ok = await ensureAdmin();
-    if (!ok) return;
+    const gate = await ensureAdminSession();
+    if (!gate.ok) {
+      showNotification(gate.msg, "error");
+      setUser(null);
+      setView("login");
+      return;
+    }
 
     if (!confirm("Confirm Deletion: This action is irreversible.")) return;
 
     const { error } = await supabase.from(TABLE).delete().eq("id", id);
     if (error) {
-      const extra = [error.code, (error as any).details, (error as any).hint]
-        .filter(Boolean)
-        .join(" | ");
-      showNotification(extra ? `${error.message} | ${extra}` : error.message, "error");
+      console.error("DELETE ERROR:", error);
+      showNotification(error.message, "error");
       return;
     }
 
