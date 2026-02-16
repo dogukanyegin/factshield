@@ -12,18 +12,19 @@ const SUPABASE_URL = "https://onnsaeorzwzgusdamqdi.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubnNhZW9yend6Z3VzZGFtcWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA1MzcsImV4cCI6MjA4NjY2NjUzN30.Z89JNhn0c1X0FgPP5w45UxzQ3_rg2XSdApyPLI1x1BQ";
 
-// ✅ Session persist + refresh + localStorage
-// ❗ storageKey'i kaldırdım (default daha stabil)
+// ✅ Session persist + refresh + localStorage (Pages için stabil)
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: typeof window !== "undefined" ? window.localStorage : undefined,
+    // ✅ aynı domainde birden fazla supabase app varsa çakışmasın
+    storageKey: "factshield-auth",
   },
 });
 
-// ✅ DevTools için (UI bozulmaz): console’da window.supabase ile test edersin
+// ✅ DevTools: console’da window.supabase
 // @ts-ignore
 if (typeof window !== "undefined") (window as any).supabase = supabase;
 
@@ -67,6 +68,7 @@ function toDateYMD(value: string | null): string {
 function parseFiles(v: unknown): string[] {
   if (v == null) return [];
   if (Array.isArray(v)) return v.map((x) => String(x));
+
   if (typeof v === "string") {
     const s = v.trim();
     if (!s) return [];
@@ -81,6 +83,7 @@ function parseFiles(v: unknown): string[] {
       .map((x) => x.trim())
       .filter(Boolean);
   }
+
   return [];
 }
 
@@ -158,13 +161,13 @@ const App = () => {
     let mounted = true;
 
     (async () => {
-      // ✅ getSession yerine getUser: gerçek auth doğrulama
-      const { data: u, error } = await supabase.auth.getUser();
+      // ✅ Pages için en stabil: getSession (localStorage)
+      const { data, error } = await supabase.auth.getSession();
       if (!mounted) return;
 
       if (error) showNotification(error.message, "error");
 
-      const email = u.user?.email ?? null;
+      const email = data.session?.user?.email ?? null;
       if (email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) setUser({ username: "admin" });
       else setUser(null);
 
@@ -176,7 +179,6 @@ const App = () => {
       const email = session?.user?.email ?? null;
       if (email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) setUser({ username: "admin" });
       else setUser(null);
-
       await loadPosts();
     });
 
@@ -188,21 +190,26 @@ const App = () => {
 
   /**
    * =========================
-   *  AUTH GUARD (publish/delete için)
+   *  AUTH GUARD (publish/delete)
    * =========================
+   * ✅ getUser() yerine getSession(): 1 kerelik login / publish takılması biter
    */
   const ensureAdmin = async (): Promise<boolean> => {
-    const { data: u, error } = await supabase.auth.getUser();
+    const { data, error } = await supabase.auth.getSession();
     if (error) {
       showNotification(error.message, "error");
       return false;
     }
-    if (!u.user) {
-      showNotification("Unauthorized: Please login again.", "error");
+
+    const s = data.session;
+    if (!s?.user) {
+      showNotification("Unauthorized: Session missing. Please login again.", "error");
+      setUser(null);
       setView("login");
       return false;
     }
-    const email = (u.user.email ?? "").toLowerCase();
+
+    const email = (s.user.email ?? "").toLowerCase();
     if (email !== ADMIN_EMAIL.toLowerCase()) {
       showNotification("Access Denied: Not authorized for admin.", "error");
       await supabase.auth.signOut();
@@ -210,6 +217,7 @@ const App = () => {
       setView("login");
       return false;
     }
+
     return true;
   };
 
@@ -230,8 +238,7 @@ const App = () => {
       return;
     }
 
-    // ✅ Login sonrası getSession çağırma; data.user kullan
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: ADMIN_EMAIL,
       password,
     });
@@ -241,18 +248,9 @@ const App = () => {
       return;
     }
 
-    const sUser = data.user ?? null;
-    if (!sUser) {
-      showNotification("Login OK but user missing. Please try again.", "error");
-      return;
-    }
-
-    const email = (sUser.email ?? "").toLowerCase();
-    if (email !== ADMIN_EMAIL.toLowerCase()) {
-      await supabase.auth.signOut();
-      showNotification("Access Denied: Not authorized for admin.", "error");
-      return;
-    }
+    // ✅ login sonrası session’ın gerçekten yazıldığını doğrula
+    const ok = await ensureAdmin();
+    if (!ok) return;
 
     setUser({ username: "admin" });
     setView("admin");
@@ -282,7 +280,6 @@ const App = () => {
       return;
     }
 
-    // ✅ getSession yerine getUser guard
     const ok = await ensureAdmin();
     if (!ok) return;
 
@@ -311,8 +308,9 @@ const App = () => {
         .single();
 
       if (error) {
-        // daha teşhisli mesaj:
-        const extra = [error.code, (error as any).details, (error as any).hint].filter(Boolean).join(" | ");
+        const extra = [error.code, (error as any).details, (error as any).hint]
+          .filter(Boolean)
+          .join(" | ");
         showNotification(extra ? `${error.message} | ${extra}` : error.message, "error");
         return;
       }
@@ -351,7 +349,9 @@ const App = () => {
 
     const { error } = await supabase.from(TABLE).delete().eq("id", id);
     if (error) {
-      const extra = [error.code, (error as any).details, (error as any).hint].filter(Boolean).join(" | ");
+      const extra = [error.code, (error as any).details, (error as any).hint]
+        .filter(Boolean)
+        .join(" | ");
       showNotification(extra ? `${error.message} | ${extra}` : error.message, "error");
       return;
     }
@@ -654,7 +654,10 @@ const App = () => {
                 >
                   DASHBOARD
                 </button>
-                <button onClick={handleLogout} className="hover:text-osint-danger transition-colors flex items-center">
+                <button
+                  onClick={handleLogout}
+                  className="hover:text-osint-danger transition-colors flex items-center"
+                >
                   LOGOUT
                 </button>
               </>
