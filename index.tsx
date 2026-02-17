@@ -708,9 +708,7 @@ const App = () => {
         )}
 
         {view === "home" && renderHome()}
-        {view === "post" && renderPostDetail()}
-        {view === "login" && renderLogin()}
-        {view === "admin" && (user ? renderAdmin() : renderLogin())}
+        {view === "uskyld-analyse" && renderLogin()}
       </main>
 
       <footer className="border-t border-[#333] py-8 text-center text-osint-muted text-sm font-mono bg-[#121212]">
@@ -723,3 +721,4 @@ const App = () => {
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
+
