@@ -6,22 +6,21 @@
     <title>Integrity Declaration | FactShield Core</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Source+Sans+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        "osint-dark": "#0a0a0a",
-                        "osint-card": "#121212",
-                        "osint-green": "#00BFA5",
-                        "osint-gold": "#D4AF37",
-                        "osint-text": "#E0E0E0",
-                        "osint-muted": "#888888",
+                        "osint-dark":   "#0a0a0a",
+                        "osint-card":   "#121212",
+                        "osint-green":  "#00BFA5",
+                        "osint-gold":   "#D4AF37",
+                        "osint-text":   "#E0E0E0",
+                        "osint-muted":  "#888888",
                         "osint-border": "#333333"
                     },
                     fontFamily: {
@@ -34,29 +33,99 @@
     </script>
 
     <style>
-        body {
-            background-color: #0a0a0a;
-            color: #e0e0e0;
+        body { background-color:#0a0a0a; color:#e0e0e0; }
+
+        ::-webkit-scrollbar { width:8px; }
+        ::-webkit-scrollbar-track { background:#0a0a0a; }
+        ::-webkit-scrollbar-thumb { background:#333; border-radius:4px; }
+        ::-webkit-scrollbar-thumb:hover { background:#00BFA5; }
+
+        .fade-in { animation: fadeIn .8s ease-in; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+        /* ── Report section ── */
+        .report-section { scroll-margin-top: 80px; }
+
+        .report-header {
+            background: linear-gradient(135deg, #111 0%, #0f1a18 100%);
+            border: 1px solid #1e3a35;
+            border-left: 4px solid #00BFA5;
         }
-        /* Özel Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0a0a0a; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00BFA5; }
-        
-        .fade-in { animation: fadeIn 0.8s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .report-block {
+            background: #0e0e0e;
+            border: 1px solid #222;
+            transition: border-color .25s;
+        }
+        .report-block:hover { border-color: #333; }
+
+        .report-number {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            color: #00BFA5;
+            letter-spacing: .2em;
+        }
+
+        .stat-box {
+            background: #0a0a0a;
+            border: 1px solid #1e3a35;
+            border-radius: 6px;
+            padding: 12px 16px;
+        }
+        .stat-val { font-family:'Roboto Mono',monospace; color:#00BFA5; font-size:13px; font-weight:700; }
+        .stat-lbl { font-size:11px; color:#666; margin-top:2px; }
+
+        .toc-link {
+            font-family:'Roboto Mono',monospace;
+            font-size:11px;
+            color:#666;
+            letter-spacing:.1em;
+            text-decoration:none;
+            display:flex;
+            align-items:center;
+            gap:8px;
+            padding:6px 0;
+            border-bottom:1px solid #1a1a1a;
+            transition: color .2s;
+        }
+        .toc-link:hover { color:#00BFA5; }
+        .toc-link::before { content:'→'; color:#00BFA5; }
+
+        .report-divider {
+            border:none;
+            border-top:1px solid #1a1a1a;
+            margin: 24px 0;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg,#0d1f1c 0%,#0a0a0a 100%);
+            border: 1px solid #1e3a35;
+            border-radius:6px;
+            padding:16px 20px;
+        }
+
+        /* Accordion toggle */
+        .acc-toggle { cursor:pointer; user-select:none; }
+        .acc-body { overflow:hidden; transition: max-height .4s ease, opacity .3s ease; }
+        .acc-body.collapsed { max-height:0 !important; opacity:0; }
+        .acc-body.expanded  { opacity:1; }
+        .acc-icon { transition:transform .3s; }
+        .acc-icon.open { transform:rotate(90deg); }
     </style>
 </head>
 <body class="font-sans min-h-screen flex flex-col selection:bg-osint-green selection:text-black">
 
+    <!-- ═══════════════════════════════════════
+         HEADER
+    ═══════════════════════════════════════ -->
     <header class="border-b border-osint-border py-10 text-center bg-[#111]">
         <div class="max-w-4xl mx-auto px-4">
-            <h1 class="text-4xl md:text-5xl font-mono text-white mb-2 tracking-tighter cursor-pointer" onclick="window.location.href='/factshield/'">
+            <h1 class="text-4xl md:text-5xl font-mono text-white mb-2 tracking-tighter cursor-pointer"
+                onclick="window.location.href='/factshield/'">
                 Fact<span class="text-osint-green">Shield</span>.no
             </h1>
             <p class="text-osint-muted text-lg font-light tracking-wide">Independent Intelligence Operation</p>
-            
+
             <nav class="mt-8 flex justify-center space-x-10 text-xs font-mono tracking-[0.2em]">
                 <a href="/factshield/" class="text-osint-muted hover:text-white transition-all pb-1 border-b border-transparent hover:border-white no-underline">
                     HOME
@@ -68,22 +137,27 @@
         </div>
     </header>
 
+    <!-- ═══════════════════════════════════════
+         MAIN
+    ═══════════════════════════════════════ -->
     <main class="flex-grow container max-w-4xl mx-auto px-6 py-12 fade-in">
-        
-        <div class="bg-osint-card border border-osint-gold rounded-lg p-8 md:p-12 shadow-2xl relative overflow-hidden">
-            
+
+        <!-- ── Integrity Declaration Card ── -->
+        <div class="bg-osint-card border border-osint-gold rounded-lg p-8 md:p-12 shadow-2xl relative overflow-hidden mb-12">
+
             <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#D4AF37"
+                     stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     <path d="M9 12l2 2 4-4"></path>
                 </svg>
             </div>
 
             <div class="text-center mb-10 border-b border-osint-border pb-8">
-                <svg class="mx-auto text-osint-gold mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="mx-auto text-osint-gold mb-4" width="48" height="48" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                 </svg>
-                
                 <h1 class="text-2xl md:text-3xl font-mono text-white tracking-widest uppercase mb-2">
                     Integrity Declaration
                 </h1>
@@ -93,7 +167,8 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-12 font-sans">
-                
+
+                <!-- English -->
                 <section class="space-y-4">
                     <h2 class="text-osint-gold font-mono text-xs tracking-widest uppercase flex items-center">
                         <span class="w-2 h-2 bg-osint-gold mr-2 rounded-full"></span> English Version
@@ -102,15 +177,19 @@
                         Subject: Analytical Defense of Institutional Integrity
                     </h3>
                     <p class="text-osint-text leading-relaxed text-base opacity-90 border-l-2 border-osint-border pl-4">
-                        The documents presented on this platform are curated from publicly available archives (specifically DOJ/US Judicial records). 
-                        My objective is not the dissemination of sensitive information, but rather the <strong class="text-white">Fact-Based Analysis</strong> of historical data to counteract misinformation.
+                        The documents presented on this platform are curated from publicly available archives
+                        (specifically DOJ/US Judicial records). My objective is not the dissemination of sensitive
+                        information, but rather the <strong class="text-white">Fact-Based Analysis</strong> of
+                        historical data to counteract misinformation.
                     </p>
                     <p class="text-osint-muted text-sm leading-relaxed">
-                        As a licensed independent analyst, I provide this context to prove the moral boundaries maintained by the Norwegian Crown. 
-                        This study serves as a digital archive for security protocols and as a testament to the innocence (Uskyld) of HKH Crown Princess Mette-Marit.
+                        As a licensed independent analyst, I provide this context to prove the moral boundaries
+                        maintained by the Norwegian Crown. This study serves as a digital archive for security
+                        protocols and as a testament to the innocence (Uskyld) of HKH Crown Princess Mette-Marit.
                     </p>
                 </section>
 
+                <!-- Norsk -->
                 <section class="space-y-4 md:border-l md:border-osint-border md:pl-8">
                     <h2 class="text-osint-gold font-mono text-xs tracking-widest uppercase flex items-center">
                         <span class="w-2 h-2 bg-osint-gold mr-2 rounded-full"></span> Norsk Versjon
@@ -119,12 +198,372 @@
                         Emne: Analytisk forsvar av institusjonell integritet
                     </h3>
                     <p class="text-osint-text leading-relaxed text-base opacity-90 border-l-2 border-osint-border pl-4">
-                        Dokumentene som presenteres på denne plattformen er hentet fra offentlig tilgjengelige arkiver. 
-                        Mitt mål er ikke spredning av sensitiv informasjon, men snarere en <strong class="text-white">faktabasert analyse</strong> av historiske data for å motvirke feilinformasjon.
+                        Dokumentene som presenteres på denne plattformen er hentet fra offentlig tilgjengelige arkiver
+                        (spesifikt DOJ/US judisielle registre). Mitt mål er ikke spredning av sensitiv informasjon,
+                        men snarere en <strong class="text-white">faktabasert analyse</strong> av historiske data
+                        for å motvirke feilinformasjon.
                     </p>
                     <p class="text-osint-muted text-sm leading-relaxed">
-                        Som en uavhengig analytiker gir jeg denne konteksten for å bevise de moralske grensene som ble opprettholdt av det norske kongehuset. 
+                        Som en uavhengig analytiker gir jeg denne konteksten for å bevise de moralske grensene som
+                        ble opprettholdt av det norske kongehuset. Denne studien fungerer som et digitalt arkiv for
+                        sikkerhetsprotokoll og som et vitnesbyrd om uskyldigheten (Uskyld) til HKH Kronprinsesse
+                        Mette-Marit.
+                    </p>
+                </section>
+            </div>
+        </div>
 
-                        Denne studien fungerer som et digitalt
+        <!-- ═══════════════════════════════════════
+             NORSK RAPPORT — embedded
+        ═══════════════════════════════════════ -->
+        <div id="rapport" class="report-section">
 
+            <!-- Report header banner -->
+            <div class="report-header rounded-lg p-6 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p class="report-number mb-1">RAPPORT #2026-BUDSJETT-NO &nbsp;·&nbsp; ÅPEN KILDE</p>
+                        <h2 class="text-white font-mono text-xl md:text-2xl font-bold tracking-tight leading-snug">
+                            Monarki eller republikk –<br>hva er billigst?
+                        </h2>
+                        <p class="text-osint-muted text-sm mt-1 font-sans">
+                            En budsjettanalyse basert på Norge, Sverige, Danmark og store republikker
+                        </p>
+                    </div>
+                    <div class="flex-shrink-0 text-right">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00BFA5"
+                             stroke-width="1.5" class="ml-auto mb-1">
+                            <path d="M3 3h18v18H3z" rx="2"/>
+                            <path d="M3 9h18M9 21V9"/>
+                        </svg>
+                        <p class="text-[10px] font-mono text-osint-muted tracking-widest">BUDSJETT&nbsp;2026</p>
+                    </div>
+                </div>
+            </div>
 
+            <!-- TOC -->
+            <div class="report-block rounded-lg p-6 mb-6">
+                <p class="report-number mb-3">INNHOLDSFORTEGNELSE</p>
+                <nav>
+                    <a href="#s-hovedtese"  class="toc-link">Hovedtese</a>
+                    <a href="#s-skandinav"  class="toc-link">1) Skandinaviske monarkiers budsjetter</a>
+                    <a href="#s-republiker" class="toc-link">2) Store republikker som sammenligningsgrunnlag</a>
+                    <a href="#s-tolkning"   class="toc-link">3) Monarkivennlig fortolkning</a>
+                    <a href="#s-scenario"   class="toc-link">4) Hva hvis Norge var en republikk?</a>
+                    <a href="#s-konklusjon" class="toc-link">5) Konklusjon</a>
+                </nav>
+            </div>
+
+            <!-- ── Hovedtese ── -->
+            <div id="s-hovedtese" class="report-block rounded-lg p-6 mb-4 report-section">
+                <p class="report-number mb-2">INNLEDNING</p>
+                <h3 class="text-white font-mono font-bold text-base mb-4 tracking-wide">Hovedtese</h3>
+                <p class="text-osint-text text-sm leading-relaxed opacity-90">
+                    Sett fra et monarkivennlig perspektiv er kjerneargumentet følgende: moderne konstitusjonelle
+                    monarkier, særlig innenfor den skandinaviske modellen, ivaretar det symbolske statssjefembetet
+                    til en relativt lav og forutsigbar kostnad. I republikker kommer derimot statssjefembetet
+                    ofte med en større institusjonell struktur, tyngre politisk sikkerhetsbelastning, høyere
+                    overgangskostnader og et mer utstrakt byråkratisk apparat.
+                </p>
+                <p class="text-osint-text text-sm leading-relaxed opacity-90 mt-3">
+                    Påstanden om at «monarki er dyrt og republikk er billig» er derfor ikke universelt gyldig –
+                    tvert imot kan monarkiet i visse land tilby en mer stabil og mer kostnadseffektiv modell.
+                    Dette gjelder særlig for smale, konstitusjonelle og seremonielle monarkier som
+                    <strong class="text-white">Norge, Sverige og Danmark</strong>.
+                </p>
+            </div>
+
+            <!-- ── 1) Skandinav ── -->
+            <div id="s-skandinav" class="report-block rounded-lg p-6 mb-4 report-section">
+                <p class="report-number mb-2">SEKSJON 01</p>
+                <h3 class="text-white font-mono font-bold text-base mb-5 tracking-wide">
+                    Skandinaviske monarkiers gjeldende hoff-/kongefamiliebudsjetter
+                </h3>
+
+                <!-- Norge -->
+                <div class="acc-toggle flex items-center justify-between mb-3 group" onclick="toggleAcc('norge')">
+                    <span class="text-osint-green text-sm font-mono font-bold group-hover:underline">🇳🇴 Norge (2026, saldert budsjett)</span>
+                    <span class="acc-icon text-osint-muted font-mono text-xs" id="norge-icon">▶</span>
+                </div>
+                <div class="acc-body expanded mb-4" id="norge" style="max-height:600px">
+                    <p class="text-osint-text text-sm leading-relaxed opacity-90 mb-4">
+                        I Norge viser det salderte budsjettet for 2026 et samlet beløp på
+                        <strong class="text-white">307 710 000 NOK</strong> for «Det kongelige hus».
+                        Dette inkluderer apanasje til kongen og dronningen, Kongehuset / hoffinstitusjonens
+                        driftsutgifter samt separat apanasje til kronprinsparet.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="stat-box">
+                            <div class="stat-val">16 234 000 NOK</div>
+                            <div class="stat-lbl">Apanasje – Kongen og Dronningen</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">277 963 000 NOK</div>
+                            <div class="stat-lbl">Kongehuset / hoffinstitusjon</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">13 513 000 NOK</div>
+                            <div class="stat-lbl">Apanasje – Kronprinsparet</div>
+                        </div>
+                    </div>
+                </div>
+                <hr class="report-divider">
+
+                <!-- Sverige -->
+                <div class="acc-toggle flex items-center justify-between mb-3 group" onclick="toggleAcc('sverige')">
+                    <span class="text-osint-green text-sm font-mono font-bold group-hover:underline">🇸🇪 Sverige (2026)</span>
+                    <span class="acc-icon text-osint-muted font-mono text-xs" id="sverige-icon">▶</span>
+                </div>
+                <div class="acc-body collapsed mb-4" id="sverige" style="max-height:0">
+                    <p class="text-osint-text text-sm leading-relaxed opacity-90 mb-4">
+                        I den svenske regjeringens budsjettdokument for 2026 er det foreslåtte beløpet for
+                        «Kungliga hov- och slottsstaten» oppgitt til:
+                    </p>
+                    <div class="stat-box inline-block">
+                        <div class="stat-val">190 457 000 SEK</div>
+                        <div class="stat-lbl">Kungliga hov- och slottsstaten (2026)</div>
+                    </div>
+                </div>
+                <hr class="report-divider">
+
+                <!-- Danmark -->
+                <div class="acc-toggle flex items-center justify-between mb-3 group" onclick="toggleAcc('danmark')">
+                    <span class="text-osint-green text-sm font-mono font-bold group-hover:underline">🇩🇰 Danmark (forslag til finanslov 2026)</span>
+                    <span class="acc-icon text-osint-muted font-mono text-xs" id="danmark-icon">▶</span>
+                </div>
+                <div class="acc-body collapsed mb-4" id="danmark" style="max-height:0">
+                    <p class="text-osint-text text-sm leading-relaxed opacity-90 mb-4">
+                        I det danske Finansministeriets forslag til finanslov for 2026 er følgende beløp avsatt:
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="stat-box">
+                            <div class="stat-val">134,6 mill. DKK</div>
+                            <div class="stat-lbl">Kongen</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">19,4 mill. DKK</div>
+                            <div class="stat-lbl">Øvrige kongefamiliemedlemmer</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">154,0 mill. DKK</div>
+                            <div class="stat-lbl">Samlet synlig ramme</div>
+                        </div>
+                    </div>
+                    <p class="text-osint-muted text-xs mt-3 italic">
+                        * Forslag fra Finansministeriet – ikke endelig vedtatt budsjett.
+                    </p>
+                </div>
+
+                <div class="highlight-box mt-2">
+                    <p class="text-osint-green text-xs font-mono mb-1 tracking-widest">ANALYTISK NOTAT</p>
+                    <p class="text-osint-text text-sm leading-relaxed opacity-80">
+                        Disse tre eksemplene viser at kostnaden ved statssjefembetet i de skandinaviske monarkiene
+                        ikke er «ukontrollerte palasskostnader», men faste, transparente og forutsigbare
+                        offentlige utgifter. Særlig i Norge og Sverige er postene tydelig synliggjort i budsjettet.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ── 2) Republiker ── -->
+            <div id="s-republiker" class="report-block rounded-lg p-6 mb-4 report-section">
+                <p class="report-number mb-2">SEKSJON 02</p>
+                <h3 class="text-white font-mono font-bold text-base mb-3 tracking-wide">
+                    Store republikker som sammenligningsgrunnlag
+                </h3>
+                <p class="text-osint-text text-sm leading-relaxed opacity-80 mb-5">
+                    Eksemplene nedenfor er valgt fra de viktigste republikkene med åpne budsjetter for å
+                    muliggjøre en sammenligning av palasset / statsledelsens kjernestruktur. Omfanget varierer
+                    fra land til land – tallene er ikke direkte sammenlignbare, men gir likevel en retningsgivende
+                    pekepinn.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div class="stat-box">
+                        <div class="text-[10px] font-mono text-osint-muted tracking-widest mb-1">🇺🇸 USA — HVITE HUS (2026)</div>
+                        <div class="stat-val">16,1 mill. USD</div>
+                        <div class="stat-lbl">Executive Residence (kun bolig, ekskl. Secret Service)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="text-[10px] font-mono text-osint-muted tracking-widest mb-1">🇫🇷 FRANKRIKE — ÉLYSÉE (2025)</div>
+                        <div class="stat-val">125 662 386 EUR</div>
+                        <div class="stat-lbl">Présidence de la République – total driftsbudsjett</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="text-[10px] font-mono text-osint-muted tracking-widest mb-1">🇩🇪 TYSKLAND (2026)</div>
+                        <div class="stat-val">67,388 mill. EUR</div>
+                        <div class="stat-lbl">Bundespräsident und Bundespräsidialamt</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="text-[10px] font-mono text-osint-muted tracking-widest mb-1">🇮🇹 ITALIA — QUIRINALE (2025)</div>
+                        <div class="stat-val">230 mill. EUR</div>
+                        <div class="stat-lbl">Statsbevilgning til presidentembetet (inkl. infrastruktur)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="text-[10px] font-mono text-osint-muted tracking-widest mb-1">🇫🇮 FINLAND (2026)</div>
+                        <div class="stat-val">12,275 mill. EUR</div>
+                        <div class="stat-lbl">Kansli 9,775M + seyahat 1,95M + eski başkanlar 0,55M</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="text-[10px] font-mono text-osint-muted tracking-widest mb-1">🇮🇸 ISLAND (2026)</div>
+                        <div class="stat-val">418,7 mill. ISK</div>
+                        <div class="stat-lbl">Embætti forseta Íslands</div>
+                    </div>
+                </div>
+
+                <!-- Tyrkia – separat, med eget notat -->
+                <div class="stat-box mb-2">
+                    <div class="text-[10px] font-mono text-osint-muted tracking-widest mb-1">🇹🇷 TYRKIA (2026)</div>
+                    <div class="stat-val">16 495 534 000 TRY</div>
+                    <div class="stat-lbl">Cumhurbaşkanlığı – smal institusjonslinje (bredere ramme: 21,29 mrd. TRY)</div>
+                </div>
+            </div>
+
+            <!-- ── 3) Tolkning ── -->
+            <div id="s-tolkning" class="report-block rounded-lg p-6 mb-4 report-section">
+                <p class="report-number mb-2">SEKSJON 03</p>
+                <h3 class="text-white font-mono font-bold text-base mb-4 tracking-wide">
+                    Monarkivennlig fortolkning: Hvorfor den skandinaviske modellen fremstår som robust
+                </h3>
+                <p class="text-osint-text text-sm leading-relaxed opacity-90 mb-3">
+                    Det budsjettvennlige kjerneargumentet for monarkiet er følgende: de skandinaviske monarkiene
+                    er statsoverhoder uten presidentvalg og presidentskifte, med lavt politisk spenningsnivå,
+                    som fungerer seremonielt og kontinuerlig. Denne strukturen begrenser utgifter knyttet til:
+                </p>
+                <ul class="space-y-2 mb-4">
+                    <li class="flex items-start gap-2 text-sm text-osint-text opacity-80">
+                        <span class="text-osint-green font-mono mt-0.5">▸</span>
+                        Sikkerhetsbehov i valgperioder
+                    </li>
+                    <li class="flex items-start gap-2 text-sm text-osint-text opacity-80">
+                        <span class="text-osint-green font-mono mt-0.5">▸</span>
+                        Kostnadene ved embetsskifte og oppbygging av nye staber
+                    </li>
+                    <li class="flex items-start gap-2 text-sm text-osint-text opacity-80">
+                        <span class="text-osint-green font-mono mt-0.5">▸</span>
+                        Politiserte beskyttelsesbyrder og institusjonell konkurranse
+                    </li>
+                </ul>
+                <p class="text-osint-text text-sm leading-relaxed opacity-90">
+                    Ser man derimot på republikkeksemplene er budsjettene betydelige selv i land med symbolsk
+                    statssjef – Tyskland, Frankrike og Italia er klare eksempler. Påstanden om at «fjerning av
+                    kongedømmet vil gi store besparelser» lar seg dermed ikke automatisk verifisere med tall,
+                    i hvert fall ikke for europeiske statstyper.
+                </p>
+            </div>
+
+            <!-- ── 4) Scenario ── -->
+            <div id="s-scenario" class="report-block rounded-lg p-6 mb-4 report-section">
+                <p class="report-number mb-2">SEKSJON 04</p>
+                <h3 class="text-white font-mono font-bold text-base mb-4 tracking-wide">
+                    Hva ville kostnaden bli om Norge var en republikk?
+                </h3>
+                <p class="text-osint-muted text-xs font-mono mb-4 italic">
+                    ⚠ Analytisk estimat – Norge er ikke en republikk. Tallene er avledet fra Finland, Island og Tysklands åpne data.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div class="highlight-box">
+                        <p class="text-osint-green text-xs font-mono mb-1 tracking-widest">NÅVÆRENDE KOSTNAD (2026)</p>
+                        <p class="text-white font-mono text-lg font-bold">307 710 000 NOK</p>
+                        <p class="text-osint-muted text-xs mt-1">Totalt kongebudsjett</p>
+                    </div>
+                    <div class="highlight-box" style="border-color:#3a2a1e">
+                        <p class="text-osint-gold text-xs font-mono mb-1 tracking-widest">ESTIMERT REPUBLIKKSCENARIO</p>
+                        <p class="text-white font-mono text-lg font-bold">320 – 450 mill. NOK</p>
+                        <p class="text-osint-muted text-xs mt-1">Stabilisert årlig kostnad (+ engangsutgifter)</p>
+                    </div>
+                </div>
+
+                <p class="text-osint-text text-sm leading-relaxed opacity-90 mb-3">
+                    Selv uten kongehuset ville Norge fortsatt ha behov for et statsoverhode, et offisielt
+                    residens, offisielle mottagelser og seremonier, utenlandsbesøk, en personalstab,
+                    en arkiv- og protokollstruktur, sikkerhet og vedlikeholdsutgifter.
+                </p>
+                <div class="highlight-box">
+                    <p class="text-osint-green text-xs font-mono mb-1 tracking-widest">KONKLUSJON – SEKSJON 04</p>
+                    <p class="text-osint-text text-sm leading-relaxed opacity-80">
+                        Den primære gevinsten ved å innføre republikk i Norge ville ikke være en stor innsparing
+                        på budsjettet, men utelukkende et konstitusjonelt og prinsippmessig regimeskifte.
+                        I overgångsperioden vil det dessuten påløpe engangsutgifter til ny institusjonell design,
+                        symbolendringer, protokollomstrukturering og sikkerhetsomlegging.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ── 5) Konklusjon ── -->
+            <div id="s-konklusjon" class="report-block rounded-lg p-6 mb-6 report-section">
+                <p class="report-number mb-2">SEKSJON 05</p>
+                <h3 class="text-white font-mono font-bold text-base mb-4 tracking-wide">Konklusjon</h3>
+                <p class="text-osint-text text-sm leading-relaxed opacity-90 mb-3">
+                    Sett i lys av de skandinaviske konstitusjonelle monarkiene er kongehusene ikke
+                    «sløsemaskiner» – de er i de fleste tilfeller faste offentlige institusjoner med kjente
+                    utgifter, fri for politisk skiftestress og med en diplomatisk representasjonsfunksjon.
+                    Dataene fra Norge, Sverige og Danmark underbygger dette.
+                </p>
+                <p class="text-osint-text text-sm leading-relaxed opacity-90 mb-4">
+                    Statssjefembetet i republikker er heller ikke alltid billigere. Bare «Executive Residence» i
+                    Det hvite hus i USA er en post på mange millioner dollar; eksemplene fra Frankrike, Tyskland,
+                    Italia, Finland, Island og Tyrkia viser at statssjefsinstitusjonene i republikker har budsjetter
+                    som ikke bør undervurderes.
+                </p>
+                <div class="highlight-box border-osint-gold" style="border-color:#D4AF37">
+                    <p class="text-osint-gold text-xs font-mono mb-1 tracking-widest">DET STERKESTE MONARKIVENNLIGE ARGUMENTET</p>
+                    <p class="text-white text-sm leading-relaxed font-semibold">
+                        Det eksisterende systemet opererer allerede til en relativt begrenset kostnad;
+                        en overgang til republikk ville være en ideologisk endring – ikke en økonomisk revolusjon.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Footer stamp -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-2">
+                <p class="text-[10px] font-mono text-osint-muted tracking-widest">
+                    FACTSHIELD.NO &nbsp;·&nbsp; RAPPORT #2026-BUDSJETT-NO &nbsp;·&nbsp; ÅPEN KILDE
+                </p>
+                <p class="text-[10px] font-mono text-osint-muted">
+                    DATA: Statsbudsjettet (NO) · Regeringen.se · Finansministeriet (DK) · OMB (US) · Bundeshaushalt (DE)
+                </p>
+            </div>
+
+        </div><!-- /rapport -->
+
+    </main>
+
+    <!-- ═══════════════════════════════════════
+         FOOTER
+    ═══════════════════════════════════════ -->
+    <footer class="border-t border-osint-border py-8 text-center text-xs font-mono text-osint-muted">
+        <p>FactShield.no &nbsp;·&nbsp; Independent Intelligence Operation &nbsp;·&nbsp; NorthByte Norway Ltd</p>
+        <p class="mt-2 text-[10px] tracking-widest opacity-50">ALL DATA SOURCED FROM PUBLIC RECORDS</p>
+    </footer>
+
+    <script>
+        function toggleAcc(id) {
+            const body = document.getElementById(id);
+            const icon = document.getElementById(id + '-icon');
+            const isOpen = body.classList.contains('expanded');
+            if (isOpen) {
+                body.classList.remove('expanded');
+                body.classList.add('collapsed');
+                body.style.maxHeight = '0';
+                icon.classList.remove('open');
+            } else {
+                body.classList.remove('collapsed');
+                body.classList.add('expanded');
+                body.style.maxHeight = '600px';
+                icon.classList.add('open');
+            }
+        }
+
+        // Smooth scroll for TOC links
+        document.querySelectorAll('a[href^="#"]').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+
+</body>
+</html>
