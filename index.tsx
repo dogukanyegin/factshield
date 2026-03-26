@@ -153,7 +153,7 @@ const App = () => {
       <header className="border-b border-[#333] py-10 text-center bg-[#111]">
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-mono text-white mb-2 tracking-tighter cursor-pointer" onClick={() => setView("home")}>
-            Fact<span className="text-osint-green">Shield</span>.no
+            NordicFact<span className="text-osint-green">Shield.Norway</span>.no
           </h1>
           <p className="text-osint-muted text-lg font-light">Nordic FactShield is an independent, non-partisan OSINT and digital investigation initiative.
 
