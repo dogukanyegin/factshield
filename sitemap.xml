@@ -2,17 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://www.nordicfactshield.no/</loc>
-    <xhtml:link rel="alternate" hreflang="nb-no" href="https://www.nordicfactshield.no/" />
-    <xhtml:link rel="alternate" hreflang="sv-se" href="https://www.nordicfactshield.no/sv/" />
-    <xhtml:link rel="alternate" hreflang="da-dk" href="https://www.nordicfactshield.no/da/" />
-    <xhtml:link rel="alternate" hreflang="tr-tr" href="https://www.nordicfactshield.no/tr/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.nordicfactshield.no/" />
+    <loc>https://dogukanyegin.github.io/nordicfactshield.norway/</loc>
+    <xhtml:link rel="alternate" hreflang="nb-no" href="https://dogukanyegin.github.io/nordicfactshield.norway/" />
+   
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.nordicfactshield.no/nordicfactshield.norway/uskyld-analyse.html</loc>
+    <loc>https://dogukanyegin.github.io/nordicfactshield.norway/uskyld-analyse.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
