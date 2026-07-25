@@ -40,6 +40,41 @@ function excerpt(text: string, max = 420) {
   return s.slice(0, max).trimEnd() + "…";
 }
 
+/**
+ * =========================
+ * SEO: Dynamic meta per view (Home / Post detail)
+ * NO / SE / DK / EU / TR odaklı
+ * =========================
+ */
+const SEO_KEYWORDS =
+  "OSINT Norge, OSINT Sverige, OSINT Danmark, open source intelligence Europe, " +
+  "digital etterforskning Norden, faktasjekk Norge, faktakoll Sverige, kildekritikk, " +
+  "DOJ dokumentanalyse, unsealed court records, mahkeme belgesi analizi, " +
+  "açık kaynak istihbarat Türkiye, sahte haber analizi, Epstein rettsdokumenter, " +
+  "Nordic investigative journalism, digital forensics Scandinavia, misinformasjon, desinformasjon";
+
+function setMetaTag(attr: "name" | "property", key: string, content: string) {
+  let el = document.querySelector(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
+function useSEO(title: string, description: string) {
+  useEffect(() => {
+    document.title = title;
+    setMetaTag("name", "description", description);
+    setMetaTag("name", "keywords", SEO_KEYWORDS);
+    setMetaTag("property", "og:title", title);
+    setMetaTag("property", "og:description", description);
+    setMetaTag("name", "twitter:title", title);
+    setMetaTag("name", "twitter:description", description);
+  }, [title, description]);
+}
+
 const App = () => {
   // ✅ Sadece Kamu Görünümü View'ları Kaldı
   const [view, setView] = useState<"home" | "post">("home");
@@ -77,6 +112,15 @@ const App = () => {
   };
 
   useEffect(() => { loadPosts(); }, []);
+
+  useSEO(
+    view === "post" && activePost
+      ? `${activePost.title} | Nordic FactShield`
+      : "Nordic FactShield | Uavhengig OSINT-arkiv – Norge, Sverige, Danmark, Europa",
+    view === "post" && activePost
+      ? excerpt(`Kilde: Offentlige/DOJ-dokumenter. ${activePost.content}`, 160)
+      : "Uavhengig OSINT og digital etterforskning basert på verifiserbare data og offentlige dokumenter, inkludert DOJ-kilder. For Norge, Sverige, Danmark, Europa og Tyrkia."
+  );
 
   /**
    * =========================
@@ -191,4 +235,3 @@ Being mentioned in investigative documents does not equate to criminal involveme
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
-
