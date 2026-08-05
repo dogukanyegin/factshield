@@ -213,7 +213,7 @@ Being mentioned in investigative documents does not equate to criminal involveme
             </button>
 
             {/* ✅ YENI: Integrity Arşivine Geçiş Linki */}
-            <a href="/nordicfactshield.norway/uskyld-analyse.html" className="text-[#d4af37] hover:text-white transition-all pb-1 border-b border-transparent hover:border-white">
+            <a href="/uskyld-analyse.html" className="text-[#d4af37] hover:text-white transition-all pb-1 border-b border-transparent hover:border-white">
               USKYLD ANALYSE
             </a>
           </nav>
