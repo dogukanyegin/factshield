@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dogukanyegin.github.io/nordicfactshield.norway/sitemap.xml
+Sitemap: https://nordicfactshieldnorway.se/sitemap.xml
